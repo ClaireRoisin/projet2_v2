@@ -13,6 +13,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import StandardScaler
+
+########################### AFFICHAGE EN MODE WIDE (LARGE) ##################
+st.set_page_config(layout="wide")
 
 ######################## IMPORTS CSV ####################################
 
@@ -25,6 +29,8 @@ df_liste_noms = pd.read_csv('df_liste_noms.csv')
 df_fr = pd.read_csv('df_fr.csv')
 df_etranger = pd.read_csv('df_etranger.csv')
 df_genres = pd.read_csv('df_genres.csv')
+df_genre_act = pd.read_csv('df_genre_act.csv')
+df_genre_real = pd.read_csv('df_genre_real.csv')
 
 ######################## CREATION D'UNE LISTE QUI NOUS SERVIRA POUR LE TRI DES FILMS PAR GENRE ET LA SELECTBOX ####################################
 
@@ -221,7 +227,7 @@ def df_tri(film) :   # renvoie le dataframe utile pour les voisins en fonction d
 def suggestions(df, film) :
 
   array = df.iloc[:,1:].to_numpy()           # transformation des valeurs utiles en array (j'aurais aussi pu utiliser un .values)
-  nn = NearestNeighbors(n_neighbors=min(21, len(array)), metric='euclidean')         # pour récupérer 10 films voisins
+  nn = NearestNeighbors(n_neighbors=min(25, len(array)), metric='euclidean')         # pour récupérer 10 films voisins
   nn.fit(array)
   mon_film = df.loc[df['tconst']==film].iloc[:,1:].to_numpy()     
   distances, indices = nn.kneighbors(mon_film)     # on récupère les distances et les indices des films les plus proches
@@ -267,6 +273,36 @@ def filmograhie_realisateur(nom_real) :
          liste_finale = df['titreVF'].tolist() # On transforme la colonne des titres en liste
          liste_tmdb  = df['id'].tolist() # On transforme la colonne des id tmd en liste
     return liste_finale, liste_tmdb # On retourne les 2 listes
+
+# liste des acteurs de même genre
+def meme_genre(nom, role) :
+  
+  nconst = df_names.loc[df_names['Nom']==nom]['nconst'].iloc[0]
+  if role == 'acteur' :
+    df = df_genre_act
+  else :
+    df = df_genre_real
+  index_value = df.loc[df['nconst']==nconst].index
+  scaler = StandardScaler()
+  
+  array = df.iloc[:,2:].to_numpy()           # transformation des valeurs utiles en array (sans prendre la 1ere colonne qui est un nconst)
+  array = scaler.fit_transform(array)
+  array[:,23] = array[:,23]*10
+  nn = NearestNeighbors(n_neighbors=8, metric='euclidean')         # pour récupérer 2 acteurs/realisateurs voisins
+  
+  nn.fit(array)
+  personne = array[index_value,:]
+  distances, indices = nn.kneighbors(personne)     # on récupère les distances et les indices des acteurs/realisateurs les plus proches
+
+  liste_indices = indices.tolist()         # transformation de l'array des indices en liste
+  
+  del liste_indices[0][0]                 # supprime le premier de la liste (qui est le film cible)
+  liste_indices = liste_indices[0]        # transforme la liste de liste en liste simple
+  liste_nconst = []
+  liste_nconst = [df.iloc[i]['nconst'] for i in liste_indices] # La liste finale des nconst
+  liste_noms = []
+  liste_noms = [df_names['Nom'].loc[df_names['nconst']==n].iloc[0] for n in liste_nconst]
+  return liste_noms
 
 
 # Filtrage du dataframe selon le genre sélectionné ----------------------------------------
@@ -350,16 +386,19 @@ with st.sidebar: # Menu sur la gauche pour le choix de la recherche
            liste_choix = df_names_sorted['Nom'].loc[df_names_sorted['commeRealisateur']!= 'pas_de_film'].tolist()
            titre_test = st.selectbox("Entrez votre réalisateur : ", liste_choix, index = None )
         elif type_choix == 'par genre' :
-          liste_choix = liste_genres
-          genre1 = st.selectbox("Quel genre de film voulez-vous ?",liste_choix, index = None)
-          genre2 = st.selectbox("Voulez-vous sélectionner un deuxième genre ?",liste_choix, index = None)
-          if genre1 is None and genre2 is None :
-            requete_trouvee = 0
-            titre_test = None
-          else : 
-            titre_test = 1
-          st.write(f'Vous avez choisi {genre1} et {genre2}')
-          fr = st.checkbox("Afficher uniquement les films français")
+          with st.form("Recherche") :
+            liste_choix = liste_genres
+            genre1 = st.selectbox("Quel genre de film voulez-vous ?",liste_choix, index = None)
+            genre2 = st.selectbox("Voulez-vous sélectionner un deuxième genre ?",liste_choix, index = None)
+            fr = st.checkbox("Afficher uniquement les films français")
+            submitted = st.form_submit_button("Recherche")
+            if submitted :
+              requete_trouvee = 1
+              titre_test = 1
+            else : 
+              titre_test = None
+            st.write(f'Vous avez choisi {genre1} et {genre2}')
+            
 
 
 if titre_test is not None :
@@ -369,11 +408,12 @@ if titre_test is not None :
     
 
     # On affiche quelques informations du film choisis :
-    st.header(df_titres.loc[df_titres['tconst']==film]['titreVF'].iloc[0])
-    col1, col2  = st.columns([1,3])
-    with col1 :   
+    
+    col1, col2, col3, col4  = st.columns([2,1,2,2])
+    with col2 :   
        st.image(searchMovies(df_titres.loc[df_titres['tconst']==film]['id'].iloc[0]), use_column_width=True)  # affiche du film
-    with col2 :
+    with col3 :
+       st.header(df_titres.loc[df_titres['tconst']==film]['titreVF'].iloc[0])
        st.write("année de sortie : ",df_titres.loc[df_titres['tconst']==film]['anneeSortie'].iloc[0])   # année sortie
        st.write("Genres : ",df_titres.loc[df_titres['tconst']==film]['genres'].iloc[0])     # liste des genres
 
@@ -387,18 +427,26 @@ if titre_test is not None :
 
   elif type_choix == 'par acteur': # On cherche si c'est genre
     requete_trouvee = 1
-    films_finaux, imdb = filmograhie_acteur(titre_test)       
+    films_finaux, imdb = filmograhie_acteur(titre_test)  
+    st.header(f"Filmographie de {titre_test} :")
+    liste_noms = meme_genre(df_names.loc[df_names['Nom']==titre_test]['Nom'].iloc[0],'acteur')
+    
+    requete2 = 1  
 
   elif type_choix == 'par réalisateur': # On cherche si c'est un acteur ou un réalisateur
     requete_trouvee = 1
     films_finaux, imdb = filmograhie_realisateur(titre_test) 
+    liste_noms = meme_genre(df_names.loc[df_names['Nom']==titre_test],'realisateur')  
+    requete2 = 1   
+    for nom in liste_noms :
+       filmo, affiche = filmograhie_realisateur(nom)
 
   elif type_choix == 'par genre' :
     requete_trouvee = 1
     films_finaux, imdb = suggestion_genre(genre1,genre2,fr)
 
   if requete_trouvee == 1 : # Si on a trouvé un résultat à cette requête on les affiches
-    col1, col2, col3, col4  = st.columns(4)
+    col1, col2, col3, col4, col5, col6  = st.columns(6)
     if len(films_finaux) == 0 :
       st.write("Nous n'avons pas trouvé de film")
     else :
@@ -406,75 +454,262 @@ if titre_test is not None :
         if len(films_finaux) >= 0 : # Les if sont pour éviter les messages d'erreur si on n'a pas de films
           st.write(films_finaux[0])
           st.image(searchMovies(imdb[0]), use_column_width=True)
-        if len(films_finaux) >= 5 : # Les if sont pour éviter les messages d'erreur si on n'a pas 5 films
-            st.write(films_finaux[4])
-            st.image(searchMovies(imdb[4]), use_column_width=True) # use_container_width une fois mis en ligne
-        if len(films_finaux) >= 9 : # Les if sont pour éviter les messages d'erreur si on n'a pas 9 films
-            st.write(films_finaux[8])
-            st.image(searchMovies(imdb[8]), use_column_width=True) # use_container_width une fois mis en ligne
+        if len(films_finaux) >= 7 : # Les if sont pour éviter les messages d'erreur si on n'a pas 5 films
+            st.write(films_finaux[6])
+            st.image(searchMovies(imdb[6]), use_column_width=True) # use_container_width une fois mis en ligne
+        
       with col2: 
         if len(films_finaux) >= 2 :
             st.write(films_finaux[1])
             st.image(searchMovies(imdb[1]), use_column_width=True)
-        if len(films_finaux) >= 6 : 
-            st.write(films_finaux[5])
-            st.image(searchMovies(imdb[5]), use_column_width=True)
-        if len(films_finaux) >= 10 : 
-            st.write(films_finaux[9])
-            st.image(searchMovies(imdb[9]), use_column_width=True)
+        if len(films_finaux) >= 8 : 
+            st.write(films_finaux[7])
+            st.image(searchMovies(imdb[7]), use_column_width=True)
+        
       with col3: 
         if len(films_finaux) >= 3 :
             st.write(films_finaux[2])
             st.image(searchMovies(imdb[2]), use_column_width=True)
-        if len(films_finaux) >= 7 : # Les if sont pour éviter les messages d'erreur si on n'a pas 10 films
-            st.write(films_finaux[6])
-            st.image(searchMovies(imdb[6]), use_column_width=True) # use_container_width une fois mis en ligne
-        if len(films_finaux) >= 11 : # Les if sont pour éviter les messages d'erreur si on n'a pas 10 films
-            st.write(films_finaux[10])
-            st.image(searchMovies(imdb[10]), use_column_width=True) # use_container_width une fois mis en ligne
+        if len(films_finaux) >= 9 : # Les if sont pour éviter les messages d'erreur si on n'a pas 10 films
+            st.write(films_finaux[8])
+            st.image(searchMovies(imdb[8]), use_column_width=True) # use_container_width une fois mis en ligne
+        
       with col4: 
         if len(films_finaux) >= 4 :
             st.write(films_finaux[3])
             st.image(searchMovies(imdb[3]), use_column_width=True)
-        if len(films_finaux) >= 8 : 
-            st.write(films_finaux[7])
-            st.image(searchMovies(imdb[7]), use_column_width=True)
+        if len(films_finaux) >= 10 : 
+            st.write(films_finaux[9])
+            st.image(searchMovies(imdb[9]), use_column_width=True)
+        
+      with col5: 
+        if len(films_finaux) >= 5 :
+            st.write(films_finaux[4])
+            st.image(searchMovies(imdb[4]), use_column_width=True)
+        if len(films_finaux) >= 11 : 
+            st.write(films_finaux[10])
+            st.image(searchMovies(imdb[10]), use_column_width=True)
+            
+      with col6: 
+        if len(films_finaux) >= 6 :
+            st.write(films_finaux[5])
+            st.image(searchMovies(imdb[5]), use_column_width=True)
         if len(films_finaux) >= 12 : 
             st.write(films_finaux[11])
             st.image(searchMovies(imdb[11]), use_column_width=True)
+            
     if len(films_finaux) > 12 :
       if st.button('Afficher plus')  :
         with col1: 
           if len(films_finaux) >= 13 : # Les if sont pour éviter les messages d'erreur si on n'a pas 10 films
             st.write(films_finaux[12])
             st.image(searchMovies(imdb[12]), use_column_width=True) # use_container_width une fois mis en ligne
-          if len(films_finaux) >= 17 : # Les if sont pour éviter les messages d'erreur si on n'a pas 10 films
-            st.write(films_finaux[16])
-            st.image(searchMovies(imdb[16]), use_column_width=True) # use_container_width une fois mis en ligne
+          if len(films_finaux) >= 19 : # Les if sont pour éviter les messages d'erreur si on n'a pas 10 films
+            st.write(films_finaux[18])
+            st.image(searchMovies(imdb[18]), use_column_width=True) # use_container_width une fois mis en ligne
         with col2: 
           if len(films_finaux) >= 14 : 
             st.write(films_finaux[13])
             st.image(searchMovies(imdb[13]), use_column_width=True)
-          if len(films_finaux) >= 18 : 
-            st.write(films_finaux[17])
-            st.image(searchMovies(imdb[17]), use_column_width=True)
+          if len(films_finaux) >= 20 : 
+            st.write(films_finaux[19])
+            st.image(searchMovies(imdb[19]), use_column_width=True)
         with col3: 
           if len(films_finaux) >= 15 : # Les if sont pour éviter les messages d'erreur si on n'a pas 10 films
             st.write(films_finaux[14])
             st.image(searchMovies(imdb[14]), use_column_width=True) # use_container_width une fois mis en ligne
-          if len(films_finaux) >= 19 : # Les if sont pour éviter les messages d'erreur si on n'a pas 10 films
-            st.write(films_finaux[18])
-            st.image(searchMovies(imdb[18]), use_column_width=True) # use_container_width une fois mis en ligne
+          if len(films_finaux) >= 21 : # Les if sont pour éviter les messages d'erreur si on n'a pas 10 films
+            st.write(films_finaux[20])
+            st.image(searchMovies(imdb[20]), use_column_width=True) # use_container_width une fois mis en ligne
         with col4: 
           if len(films_finaux) >= 16 : 
             st.write(films_finaux[15])
             st.image(searchMovies(imdb[15]), use_column_width=True)
-          if len(films_finaux) >= 20 : 
-            st.write(films_finaux[19])
-            st.image(searchMovies(imdb[19]), use_column_width=True)
+          if len(films_finaux) >= 22 : 
+            st.write(films_finaux[21])
+            st.image(searchMovies(imdb[21]), use_column_width=True)
+        with col5: 
+          if len(films_finaux) >= 17 : 
+            st.write(films_finaux[16])
+            st.image(searchMovies(imdb[16]), use_column_width=True)
+          if len(films_finaux) >= 23 : 
+            st.write(films_finaux[22])
+            st.image(searchMovies(imdb[22]), use_column_width=True)
+        with col6: 
+          if len(films_finaux) >= 18 : 
+            st.write(films_finaux[17])
+            st.image(searchMovies(imdb[17]), use_column_width=True)
+          if len(films_finaux) >= 24 : 
+            st.write(films_finaux[23])
+            st.image(searchMovies(imdb[23]), use_column_width=True)
    
-           
+    if requete2 == 1 :
+      st.header("Autres acteurs qui pourraient vous plaire :")
       
+      # premier acteur voisin :
+      st.write(f"filmographie de {liste_noms[0]} :")
+      filmo, affiche = filmograhie_acteur(liste_noms[0])
+      col1, col2, col3, col4, col5, col6,col7, col8  = st.columns(8)
+    if len(filmo) == 0 :
+      st.write("Nous n'avons pas trouvé de film")
+    else :
+      with col1: 
+        if len(filmo) >= 0 : # Les if sont pour éviter les messages d'erreur si on n'a pas de films
+          st.write(filmo[0])
+          st.image(searchMovies(affiche[0]), use_column_width=True)
+      with col2: 
+        if len(filmo) >= 2 :
+            st.write(filmo[1])
+            st.image(searchMovies(affiche[1]), use_column_width=True)
+      with col3: 
+        if len(filmo) >= 3 :
+            st.write(filmo[2])
+            st.image(searchMovies(affiche[2]), use_column_width=True)               
+      with col4: 
+        if len(filmo) >= 4 :
+            st.write(filmo[3])
+            st.image(searchMovies(affiche[3]), use_column_width=True)               
+      with col5: 
+        if len(filmo) >= 5 :
+            st.write(filmo[4])
+            st.image(searchMovies(affiche[4]), use_column_width=True)                    
+      with col6: 
+        if len(filmo) >= 6 :
+            st.write(filmo[5])
+            st.image(searchMovies(affiche[5]), use_column_width=True)       
+      with col7: 
+        if len(filmo) >= 7 :
+            st.write(filmo[5])
+            st.image(searchMovies(affiche[6]), use_column_width=True)   
+      with col8: 
+        if len(filmo) >= 8 :
+            st.write(filmo[5])
+            st.image(searchMovies(affiche[7]), use_column_width=True)
+      
+            # deuxième acteur voisin :
+      st.write(f"filmographie de {liste_noms[1]} :")
+      filmo, affiche = filmograhie_acteur(liste_noms[1])
+      col1, col2, col3, col4, col5, col6,col7, col8  = st.columns(8)
+    if len(filmo) == 0 :
+      st.write("Nous n'avons pas trouvé de film")
+    else :
+      with col1: 
+        if len(filmo) >= 0 : # Les if sont pour éviter les messages d'erreur si on n'a pas de films
+          st.write(filmo[0])
+          st.image(searchMovies(affiche[0]), use_column_width=True)
+      with col2: 
+        if len(filmo) >= 2 :
+            st.write(filmo[1])
+            st.image(searchMovies(affiche[1]), use_column_width=True)
+      with col3: 
+        if len(filmo) >= 3 :
+            st.write(filmo[2])
+            st.image(searchMovies(affiche[2]), use_column_width=True)               
+      with col4: 
+        if len(filmo) >= 4 :
+            st.write(filmo[3])
+            st.image(searchMovies(affiche[3]), use_column_width=True)               
+      with col5: 
+        if len(filmo) >= 5 :
+            st.write(filmo[4])
+            st.image(searchMovies(affiche[4]), use_column_width=True)                    
+      with col6: 
+        if len(filmo) >= 6 :
+            st.write(filmo[5])
+            st.image(searchMovies(affiche[5]), use_column_width=True)       
+      with col7: 
+        if len(filmo) >= 7 :
+            st.write(filmo[5])
+            st.image(searchMovies(affiche[6]), use_column_width=True)   
+      with col8: 
+        if len(filmo) >= 8 :
+            st.write(filmo[5])
+            st.image(searchMovies(affiche[7]), use_column_width=True)
+
+      if st.button('Autres acteurs')  :
+          # troisième acteur voisin :
+        st.write(f"filmographie de {liste_noms[2]} :")
+        filmo, affiche = filmograhie_acteur(liste_noms[2])
+        col1, col2, col3, col4, col5, col6,col7, col8  = st.columns(8)
+      if len(filmo) == 0 :
+        st.write("Nous n'avons pas trouvé de film")
+      else :
+        with col1: 
+          if len(filmo) >= 0 : # Les if sont pour éviter les messages d'erreur si on n'a pas de films
+            st.write(filmo[0])
+            st.image(searchMovies(affiche[0]), use_column_width=True)
+        with col2: 
+          if len(filmo) >= 2 :
+            st.write(filmo[1])
+            st.image(searchMovies(affiche[1]), use_column_width=True)
+        with col3: 
+          if len(filmo) >= 3 :
+            st.write(filmo[2])
+            st.image(searchMovies(affiche[2]), use_column_width=True)               
+        with col4: 
+          if len(filmo) >= 4 :
+            st.write(filmo[3])
+            st.image(searchMovies(affiche[3]), use_column_width=True)               
+        with col5: 
+          if len(filmo) >= 5 :
+            st.write(filmo[4])
+            st.image(searchMovies(affiche[4]), use_column_width=True)                    
+        with col6: 
+          if len(filmo) >= 6 :
+            st.write(filmo[5])
+            st.image(searchMovies(affiche[5]), use_column_width=True)       
+        with col7: 
+          if len(filmo) >= 7 :
+            st.write(filmo[5])
+            st.image(searchMovies(affiche[6]), use_column_width=True)   
+        with col8: 
+          if len(filmo) >= 8 :
+            st.write(filmo[5])
+            st.image(searchMovies(affiche[7]), use_column_width=True)
+      
+            # quatrième acteur voisin :
+        st.write(f"filmographie de {liste_noms[3]} :")
+        filmo, affiche = filmograhie_acteur(liste_noms[3])
+        col1, col2, col3, col4, col5, col6,col7, col8  = st.columns(8)
+        if len(filmo) == 0 :
+          st.write("Nous n'avons pas trouvé de film")
+        else :
+          with col1: 
+            if len(filmo) >= 0 : # Les if sont pour éviter les messages d'erreur si on n'a pas de films
+              st.write(filmo[0])
+              st.image(searchMovies(affiche[0]), use_column_width=True)
+          with col2: 
+            if len(filmo) >= 2 :
+              st.write(filmo[1])
+              st.image(searchMovies(affiche[1]), use_column_width=True)
+          with col3: 
+            if len(filmo) >= 3 :
+              st.write(filmo[2])
+              st.image(searchMovies(affiche[2]), use_column_width=True)               
+          with col4: 
+            if len(filmo) >= 4 :
+              st.write(filmo[3])
+              st.image(searchMovies(affiche[3]), use_column_width=True)               
+          with col5: 
+            if len(filmo) >= 5 :
+              st.write(filmo[4])
+              st.image(searchMovies(affiche[4]), use_column_width=True)                    
+          with col6: 
+            if len(filmo) >= 6 :
+              st.write(filmo[5])
+              st.image(searchMovies(affiche[5]), use_column_width=True)       
+          with col7: 
+            if len(filmo) >= 7 :
+              st.write(filmo[5])
+              st.image(searchMovies(affiche[6]), use_column_width=True)   
+          with col8: 
+            if len(filmo) >= 8 :
+              st.write(filmo[5])
+              st.image(searchMovies(affiche[7]), use_column_width=True) 
+
+
+
+
   else : # On a rien trouvé qui correspond à la requête
     st.write("Nous n'avons pas trouvé de résultat à votre recherche")
 
