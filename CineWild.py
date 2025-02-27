@@ -318,14 +318,13 @@ def suggestion_genre (genre1,genre2,fr) :
     
     
     if genre1 is not None :
-       df1 = df_genres.loc[df_genres[genre1] == 1]['tconst']
-       df = df1
+      df1 = df_genres.loc[df_genres[genre1] == 1]['tconst']
+      df = df1
     if genre2 is not None :
-       df2 = df_genres.loc[df_genres[genre2] == 1]['tconst']
-       df = df2
+      df2 = df_genres.loc[df_genres[genre2] == 1]['tconst']
+      df = df2
     if genre1 is not None and genre2 is not None :
-
-        df = pd.merge(df1,df2,how='inner',on='tconst')
+      df = pd.merge(df1,df2,how='inner',on='tconst')
 
     
     df = pd.merge(df_titres, df, how = 'inner', on = 'tconst')
@@ -376,18 +375,25 @@ def synopsis(query) :
 df_titres_sorted = df_titres.sort_values('titreVF')  # On classe les titres par ordre alphabétiques
 df_names_sorted = df_names.sort_values('Nom') # On classe les noms d'acteurs et réalisateurs par ordre alphabétiques
 
-submitted = 0
-requete_trouvee = 0 # Initialisation de la requête, si à 0 rien d'afficher sur l'écran principal
+if 'submitted' not in st.session_state :
+  st.session_state.submitted = 0
+if 'requete_trouvee' not in st.session_state :
+  st.session_state.requete_trouvee = 0 # Initialisation de la requête, si à 0 rien d'afficher sur l'écran principal
 requete2 = 0
-col1, col2, col3 = st.columns([1,2,1])
-with col2 :
-   st.image('logo-removebg-preview.png',use_column_width=True)
+if 'logo' not in st.session_state :
+   st.session_state.logo = 0
+
+if st.session_state.requete_trouvee == 0 and st.session_state.logo == 0 :
+  col1, col2, col3 = st.columns([1,1,1])
+  with col2 :
+    st.image('logo-removebg-preview.png',use_column_width=True)
+  
 with st.sidebar: # Menu sur la gauche pour le choix de la recherche
         type_choix = st.selectbox("Quel type de recherche voulez-vous effectuer ?", ['par film','par acteur', 'par réalisateur','par genre']) # Sélection du choix de la recherche
         if type_choix == 'par film':
           liste_choix = df_titres_sorted['titreVF'].tolist()
           titre_test = st.selectbox("Entrez votre titre de film : ", liste_choix, index = None )
-
+          
         elif type_choix == 'par acteur':
           liste_choix = df_names_sorted['Nom'].loc[df_names_sorted['commeActeur']!= 'pas_de_film'].tolist()
           titre_test = st.selectbox("Entrez votre acteur : ", liste_choix, index = None )
@@ -414,7 +420,7 @@ if titre_test is not None :
   if type_choix == 'par film':  # On cherche si c'est un titre de film
     st.session_state.requete_trouvee = 1
     film = id_du_film(titre_test)
-    
+    st.session_state.logo = 1
 
     # On affiche quelques informations du film choisis :
     
@@ -436,6 +442,7 @@ if titre_test is not None :
 
   elif type_choix == 'par acteur': # On cherche si c'est genre
     st.session_state.requete_trouvee = 1
+    st.session_state.logo == 1
     films_finaux, imdb = filmograhie_acteur(titre_test)  
     st.header(f"Filmographie de {titre_test} :")
     liste_noms = meme_genre(df_names.loc[df_names['Nom']==titre_test]['Nom'].iloc[0],'acteur')
