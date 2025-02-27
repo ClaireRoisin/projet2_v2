@@ -246,6 +246,7 @@ def suggestions(df, film) :
 # Filtrage du dataframe selon l'acteur sélectionné ----------------------------------------
 
 def filmograhie_acteur(nom_acteur) :
+    
     IDactor = df_names.loc[df_names['Nom']==nom_acteur]['nconst'].iloc[0]  # recherche du nconst de l'acteur
     if df_names.loc[df_names['Nom']==nom_acteur]['commeActeur'].iloc[0] == 'pas_de_film' : # Si ce n'est pas un acteur retour d'une liste de film vide
        liste_finale = []
@@ -257,6 +258,7 @@ def filmograhie_acteur(nom_acteur) :
       df = df.sort_values('nbVotes', ascending = False).head(20) # On les classe par nombre de votes
       liste_finale = df['titreVF'].tolist() # On transforme la colonne des titres en liste
       liste_tmdb = df['id'].tolist() # On transforme la colonne des id tmd en liste
+      
     return liste_finale, liste_tmdb # On retourne les 2 listes
  
 
@@ -283,6 +285,7 @@ def meme_genre(nom, role) :
   else :
     df = df_genre_real
   index_value = df.loc[df['nconst']==nconst].index
+
   scaler = StandardScaler()
   
   array = df.iloc[:,2:].to_numpy()           # transformation des valeurs utiles en array (sans prendre la 1ere colonne qui est un nconst)
@@ -291,8 +294,8 @@ def meme_genre(nom, role) :
   array[:,23] = array[:,23]
   array[:,24] = array[:,24]*10
   array[:,25] = array[:,25]/2
-  
   nn = NearestNeighbors(n_neighbors= min(5, len(array)), metric='euclidean')         # pour récupérer 2 acteurs/realisateurs voisins
+ 
 
   nn.fit(array)
   personne = array[index_value,:]
@@ -330,7 +333,7 @@ def suggestion_genre (genre1,genre2,fr) :
     if fr :
         df = df.loc[df['original_language']=='fr']
 
-    df = df.sort_values('nbVotes', ascending = False).head(20)
+    df = df.sort_values('nbVotes', ascending = False).head(24)
     
     liste_finale = df['titreVF'].tolist()
     liste_tmdb = df['id'].tolist() 
@@ -373,7 +376,7 @@ def synopsis(query) :
 df_titres_sorted = df_titres.sort_values('titreVF')  # On classe les titres par ordre alphabétiques
 df_names_sorted = df_names.sort_values('Nom') # On classe les noms d'acteurs et réalisateurs par ordre alphabétiques
 
-
+submitted = 0
 requete_trouvee = 0 # Initialisation de la requête, si à 0 rien d'afficher sur l'écran principal
 requete2 = 0
 with st.sidebar: # Menu sur la gauche pour le choix de la recherche
@@ -406,7 +409,7 @@ with st.sidebar: # Menu sur la gauche pour le choix de la recherche
 
 if titre_test is not None :
   if type_choix == 'par film':  # On cherche si c'est un titre de film
-    requete_trouvee = 1
+    st.session_state.requete_trouvee = 1
     film = id_du_film(titre_test)
     
 
