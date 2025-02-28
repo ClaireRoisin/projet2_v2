@@ -315,8 +315,7 @@ def meme_genre(nom, role) :
 # Filtrage du dataframe selon le genre sélectionné ----------------------------------------
 
 def suggestion_genre (genre1,genre2,fr) :
-    
-    
+        
     if genre1 is not None :
       df1 = df_genres.loc[df_genres[genre1] == 1]['tconst']
       df = df1
@@ -393,13 +392,16 @@ with st.sidebar: # Menu sur la gauche pour le choix de la recherche
         if type_choix == 'par film':
           liste_choix = df_titres_sorted['titreVF'].tolist()
           titre_test = st.selectbox("Entrez votre titre de film : ", liste_choix, index = None )
-          
+          st.session_state.submitted = 0
         elif type_choix == 'par acteur':
           liste_choix = df_names_sorted['Nom'].loc[df_names_sorted['commeActeur']!= 'pas_de_film'].tolist()
           titre_test = st.selectbox("Entrez votre acteur : ", liste_choix, index = None )
+          st.session_state.submitted = 1
+          st.session_state.logo = 1
         elif type_choix == 'par réalisateur':
            liste_choix = df_names_sorted['Nom'].loc[df_names_sorted['commeRealisateur']!= 'pas_de_film'].tolist()
            titre_test = st.selectbox("Entrez votre réalisateur : ", liste_choix, index = None )
+           st.session_state.submitted = 0
         elif type_choix == 'par genre' :
           with st.form("Recherche") :
             liste_choix = liste_genres
@@ -413,6 +415,7 @@ with st.sidebar: # Menu sur la gauche pour le choix de la recherche
               titre_test = 1
             else : 
               titre_test = None
+              st.session_state.submitted = 0
             st.write(f'Vous avez choisi {genre1} et {genre2}')
             
 
@@ -442,7 +445,7 @@ if titre_test is not None :
 
   elif type_choix == 'par acteur': # On cherche si c'est genre
     st.session_state.requete_trouvee = 1
-    st.session_state.logo == 1
+    st.session_state.logo = 0
     films_finaux, imdb = filmograhie_acteur(titre_test)  
     st.header(f"Filmographie de {titre_test} :")
     liste_noms = meme_genre(df_names.loc[df_names['Nom']==titre_test]['Nom'].iloc[0],'acteur')
