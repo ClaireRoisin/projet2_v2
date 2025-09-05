@@ -397,6 +397,9 @@ with st.sidebar: # Menu sur la gauche pour le choix de la recherche
             genre1 = st.selectbox("Quel genre de film voulez-vous ?",liste_choix, index = None)
             genre2 = st.selectbox("Voulez-vous sélectionner un deuxième genre ?",liste_choix, index = None)
             fr = st.checkbox("Afficher uniquement les films français")
+            # Initialisation si la clé n'existe pas encore
+            if "submitted" not in st.session_state:
+                  st.session_state.submitted = 0
             if st.form_submit_button("Recherche") :
               st.session_state.submitted = 1
             if st.session_state.submitted == 1:
@@ -736,5 +739,6 @@ if titre_test is not None :
 
   
      
+
 
 
