@@ -1,8 +1,8 @@
 # Interface web
-streamlit>=1.30
+streamlit>=1.30.0
 
 # Manipulation et analyse de données
-pandas=2.4.4
+pandas==2.0.3
 numpy>=1.26
 
 # Visualisation
@@ -13,4 +13,3 @@ requests>=2.31
 
 # Machine Learning
 scikit-learn>=1.3
-
