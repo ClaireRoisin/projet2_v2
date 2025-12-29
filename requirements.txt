@@ -2,7 +2,7 @@
 streamlit>=1.30
 
 # Manipulation et analyse de données
-pandas>=2.2
+pandas=2.4.4
 numpy>=1.26
 
 # Visualisation
@@ -13,3 +13,4 @@ requests>=2.31
 
 # Machine Learning
 scikit-learn>=1.3
+
