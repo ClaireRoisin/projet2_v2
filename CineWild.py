@@ -435,7 +435,7 @@ if titre_test is not None :
        st.write("année de sortie : ",df_titres.loc[df_titres['tconst']==film]['anneeSortie'].iloc[0])   # année sortie
        st.write("Genres : ",df_titres.loc[df_titres['tconst']==film]['genres'].iloc[0])     # liste des genres
 
-       st.write(synopsis(df_titres.loc[df_titres['tconst']==film]['id'].iloc[0]), use_container_width =True)
+       st.write(synopsis(df_titres.loc[df_titres['tconst']==film]['id'].iloc[0]))
 
 
 
@@ -749,6 +749,7 @@ if titre_test is not None :
 
   
      
+
 
 
 
