@@ -609,7 +609,7 @@ if titre_test is not None :
         with col8: 
           if len(filmo) >= 8 :
             st.write(filmo[7])
-            st.image(searchMovies(affiche[7]), use_column_width=True)
+            st.image(searchMovies(affiche[7]), use_container_width =True)   
       
             # deuxième acteur voisin :
         st.write(f"filmographie de {liste_noms[1]} :")
@@ -749,6 +749,7 @@ if titre_test is not None :
 
   
      
+
 
 
 
